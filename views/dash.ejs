@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLACKPANTHER DASHBOARD</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            outline: none;
+            background: none;
+            border: none;
+            text-decoration: none;
+            box-sizing: border-box;
+            transition: .5s;
+            font-family: sans-serif;
+        }
+
+        body {
+            color: #e5e5e5;
+            background: url(/assets/bg.jpg);
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-color: #000;
+            height: 100vh;
+            overflow-y: hidden;
+            background-position: center;
+        }
+
+        ::-webkit-scrollbar {
+            width: 0;
+        }
+
+        a {
+            display: flex;
+            align-items: center;
+            background: #111;
+            padding: 0 .5rem;
+            border-radius: 10px;
+            margin-bottom: .3rem;
+            justify-content: space-between;
+            padding: .5rem;
+            text-decoration: none !important;
+            border: 2px solid #414141;
+            font-size: 1.1rem;
+            color: aqua;
+        }
+
+        a:hover {
+            border-color: #6b6b6b;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            text-align: center;
+            background: linear-gradient(100deg, #ff2600, #5900ff);
+            padding: .2rem 5%;
+            text-transform: uppercase;
+            height: 5vh;
+        }
+
+        header h2 {
+            text-transform: uppercase;
+            color: #000;
+        }
+
+        section {
+            height: 95vh;
+            overflow-y: scroll;
+            padding: 1rem 5%;
+        }
+
+        span {
+            color: #00ff00;
+        }
+
+        header p {
+            font-weight: 600;
+        }
+
+        .head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: .5rem 1rem;
+            text-transform: uppercase;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.2/socket.io.js"
+        integrity="sha512-jMNwWSmjje4fjYut9MBGKXw5FZA6D67NHAuC9szpjbbjg51KefquNfvn4DalCbGfkcv/jHsHnPo1o47+8u4biA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+
+<body>
+    <section>
+        <div class="head">
+            <p>Targets</p>
+            <p>ping</p>
+        </div>
+        <% for(let i of data) { %>
+            <a href="/panel?id=<%- i %>" data-id="<%- i %>">
+                <p><%- i %></p>
+                <span></span>
+            </a>
+            <% } %>
+    </section>
+
+    <header class="header">
+        <h2>blackpather</h2>
+        <p>Designed by madhan</p>
+    </header>
+
+    <script>
+        const socket = io("", {
+            path: '/socket.io',
+            transports: ['websocket'],
+            secure: true,
+        })
+
+        const ids = {}
+        document.querySelectorAll("[data-id]").forEach(id => {
+            let target = id.getAttribute("data-id")
+            ids[target] = 0
+
+            socket.on(`${target}-on`, data => {
+                ids[target] += 1
+                document.querySelector(`[data-id="${target}"] span`).innerHTML = ids[target]
+            })
+        })
+
+    </script>
+</body>
+
+</html>

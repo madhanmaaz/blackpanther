@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%- id %> - File Manager</title>
+    <link rel="stylesheet" href="/assets/water.css">
+    <style>
+        .file {
+            /* background: #111; */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+    </style>
+    <script>
+        let ID = `<%- id %>`
+    </script>
+</head>
+
+<body>
+    <header>
+        <h2><%- id %> - FILEMANAGER</h2>
+        <input id="file" type="file" name="file">
+    </header>
+    <%- html %>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+        <script>
+            let allCopy = document.querySelectorAll("#copy")
+            let allDel = document.querySelectorAll("#del")
+
+            allCopy.forEach(btn => {
+                btn.addEventListener("click", () => {
+                    navigator.clipboard.writeText(btn.parentElement.parentElement.querySelector("a").href)
+                })
+
+            })
+
+            allDel.forEach(btn => {
+                btn.addEventListener("click", () => {
+                    let value = btn.getAttribute("value")
+                    fetch(`/panel/del?id=${ID}&file=${value}`).then(res => { location.reload() })
+                })
+            })
+
+            let fileInput = document.querySelector("#file")
+
+            fileInput.addEventListener("change", () => {
+                axios.post(`/panel/upload?id=${ID}`, {
+                    file: fileInput.files[0]
+                }, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                }).then(res => {
+                    location.reload()
+                })
+            })
+        </script>
+</body>
+
+</html>

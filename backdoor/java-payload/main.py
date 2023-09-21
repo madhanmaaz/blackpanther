@@ -123,7 +123,7 @@ def create(type):
         os.chdir(mainPath)
         with open("config.xml", "w") as f:
             f.write(configData)
-        os.system(f'{launch4j} {os.path.join(os.getcwd(), "config.xml")}')
+        os.system(f'{launch4j} "{os.path.join(os.getcwd(), "config.xml")}"')
         print(f"EXE binary file coverted. PATH: {outputPath}")
 
     elif type == "-c":

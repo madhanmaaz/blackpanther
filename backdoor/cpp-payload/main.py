@@ -84,7 +84,7 @@ def create(type):
         with open(tempPath, "w") as f:
             f.write(programCode)
 
-        cmd = f'g++ "{tempPath}" -o {outputPath}/{payloadInfo["filename"]}.exe'
+        cmd = f'g++ "{tempPath}" -o "{outputPath}/{payloadInfo["filename"]}.exe"'
         os.system(cmd)
         print(f"EXE binary file coverted. PATH: {outputPath}")
 

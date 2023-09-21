@@ -51,7 +51,7 @@ def goto(id):
         id = int(id)
         payload = allPayloads[id]
         dirPath = os.path.join(os.getcwd(), 'backdoor', payload, "main.py")
-        os.system(f"{exe} -u {dirPath}")
+        os.system(f'{exe} -u "{dirPath}"')
     except Exception as e:
         print(f"{colorama.Fore.RED}Error id not found.{colorama.Style.RESET_ALL}")
 

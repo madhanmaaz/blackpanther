@@ -88,7 +88,7 @@ def create(type):
         with open("main.go", "w") as f:
             f.write(programCode)
         
-        cmd = f"go build -ldflags -H=windowsgui -o {outputPath}/{payloadInfo['filename']}.exe"
+        cmd = f'go build -ldflags -H=windowsgui -o "{outputPath}/{payloadInfo["filename"]}.exe"'
         os.system("go mod init go-payload-blackpanther")
         os.system(cmd)
         os.chdir(mainPath)

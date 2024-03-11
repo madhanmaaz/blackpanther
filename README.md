@@ -1,8 +1,6 @@
 ## BLACKPANTHER
 
-- Non traditional windows payloads. This payloads are using in-build application called `CURL`.
-
-
+- Windows undetectable Backdoor
 
 ![Logo](./public/assets/bg.jpg)
 

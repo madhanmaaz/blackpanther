@@ -1,6 +1,6 @@
 ## BLACKPANTHER
 
-- Windows undetectable Backdoor
+- Windows Simple Backdoor
 
 ![Logo](./public/assets/bg.jpg)
 
